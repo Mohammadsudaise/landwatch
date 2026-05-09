@@ -277,6 +277,8 @@ def load_detector():
     from change_detection.spatial_change import SpatialChangeDetector
     return SpatialChangeDetector(
         model_path="results/best_model.pth",
+        data_dir="data/raw/2750",
+        device=torch.device("cpu"),
     ), torch.device("cpu")
 
 detector, device = load_detector()

@@ -17,18 +17,19 @@ class SpatialChangeDetector:
 
     def __init__(self, model_path, data_dir=None, device=None):
 
-        # Always use CPU on cloud
-        self.device = torch.device("cpu")
+        self.device = device if device is not None else torch.device("cpu")
 
-        # Always use hardcoded classes
-        self.classes = EUROSAT_CLASSES
+        # Use hardcoded classes if data_dir missing (cloud deploy)
+        if data_dir and os.path.isdir(str(data_dir)):
+            self.classes = sorted([
+                d for d in os.listdir(data_dir)
+                if os.path.isdir(os.path.join(data_dir, d))
+            ])
+        else:
+            self.classes = EUROSAT_CLASSES
 
-        # Verify model file exists before loading
         if not os.path.isfile(model_path):
-            raise FileNotFoundError(
-                f"Model not found at '{model_path}'. "
-                f"Check that download_model.py ran successfully."
-            )
+            raise FileNotFoundError(f"Model not found at '{model_path}'.")
 
         self.model = ResNetLandUse(num_classes=len(self.classes))
         self.model.load_state_dict(
