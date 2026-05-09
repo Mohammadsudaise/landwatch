@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>LandWatch · Satellite Change Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg:         #080c10;
+    --panel:      #0e1520;
+    --border:     #1c2d42;
+    --accent:     #00e5a0;
+    --accent2:    #ff6b35;
+    --accent3:    #4fc3f7;
+    --text:       #cfd8e3;
+    --muted:      #4a6380;
+    --danger:     #ff4757;
+    --mono:       'Space Mono', monospace;
+    --sans:       'DM Sans', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── HEADER ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 32px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(8,12,16,0.95);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(12px);
+  }
+  .logo {
+    font-family: var(--mono);
+    font-size: 1rem;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+  }
+  .logo span { color: var(--text); }
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: inline-block;
+    margin-right: 8px;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity:1; box-shadow: 0 0 0 0 rgba(0,229,160,0.4); }
+    50% { opacity:0.7; box-shadow: 0 0 0 6px rgba(0,229,160,0); }
+  }
+  .header-meta {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+  }
+
+  /* ── LAYOUT ── */
+  main {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 32px 24px 64px;
+  }
+
+  .hero {
+    margin-bottom: 48px;
+  }
+  .hero h1 {
+    font-family: var(--mono);
+    font-size: clamp(1.6rem, 4vw, 2.8rem);
+    font-weight: 700;
+    line-height: 1.1;
+    color: #fff;
+    letter-spacing: -0.02em;
+  }
+  .hero h1 em {
+    font-style: normal;
+    color: var(--accent);
+  }
+  .hero p {
+    margin-top: 12px;
+    color: var(--muted);
+    font-size: 0.95rem;
+    max-width: 520px;
+    line-height: 1.6;
+  }
+
+  /* ── UPLOAD ZONE ── */
+  .upload-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 28px;
+  }
+  .upload-card {
+    background: var(--panel);
+    border: 1px dashed var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .upload-card:hover, .upload-card.dragover {
+    border-color: var(--accent);
+    background: rgba(0,229,160,0.03);
+  }
+  .upload-card.has-image {
+    border-style: solid;
+    border-color: var(--accent);
+    padding: 0;
+  }
+  .upload-card input[type=file] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+  .upload-label {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    display: block;
+  }
+  .upload-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 20px 0 8px;
+  }
+  .upload-icon {
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.4rem;
+    color: var(--muted);
+  }
+  .upload-placeholder p {
+    font-size: 0.85rem;
+    color: var(--muted);
+    text-align: center;
+    line-height: 1.4;
+  }
+  .preview-img {
+    width: 100%;
+    height: 240px;
+    object-fit: cover;
+    border-radius: 11px;
+    display: block;
+  }
+  .preview-overlay {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    padding: 10px 14px;
+    background: linear-gradient(transparent, rgba(8,12,16,0.9));
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+  }
+
+  /* ── CONFIG PANEL ── */
+  .config-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+  }
+  .config-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 16px;
+  }
+  .config-item label {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .config-item select, .config-item input[type=range] {
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    outline: none;
+    cursor: pointer;
+    accent-color: var(--accent);
+  }
+  .config-item select option { background: var(--panel); }
+  .range-val {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--accent);
+    min-width: 32px;
+  }
+
+  /* ── ANALYSE BUTTON ── */
+  .analyse-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--accent);
+    color: #080c10;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 28px;
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+    margin-bottom: 40px;
+  }
+  .analyse-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,229,160,0.25); }
+  .analyse-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+
+  /* ── SPINNER ── */
+  .spinner {
+    width: 16px; height: 16px;
+    border: 2px solid rgba(8,12,16,0.3);
+    border-top-color: #080c10;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: none;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── RESULTS ── */
+  #results { display: none; }
+
+  .section-label {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+
+  /* stat cards */
+  .stat-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    margin-bottom: 36px;
+  }
+  .stat-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+  .stat-card.green::before  { background: var(--accent); }
+  .stat-card.orange::before { background: var(--accent2); }
+  .stat-card.blue::before   { background: var(--accent3); }
+  .stat-card.red::before    { background: var(--danger); }
+
+  .stat-value {
+    font-family: var(--mono);
+    font-size: 2rem;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+  .stat-label {
+    font-size: 0.78rem;
+    color: var(--muted);
+    line-height: 1.3;
+  }
+
+  /* image comparison */
+  .compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 36px;
+  }
+  .compare-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .compare-card-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .compare-card-header .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+  }
+  .dot-green  { background: var(--accent); }
+  .dot-orange { background: var(--accent2); }
+  .dot-red    { background: var(--danger); }
+
+  .compare-canvas-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4/3;
+    overflow: hidden;
+    background: #000;
+  }
+  .compare-canvas-wrap img,
+  .compare-canvas-wrap canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* transition bar */
+  .transition-bar {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 36px;
+  }
+  .transition-bar h3 {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+  .class-bars { display: flex; flex-direction: column; gap: 10px; }
+  .class-bar-row {
+    display: grid;
+    grid-template-columns: 140px 1fr 60px;
+    align-items: center;
+    gap: 14px;
+  }
+  .class-name {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .bar-track {
+    height: 6px;
+    background: var(--border);
+    border-radius: 99px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 99px;
+    transition: width 1s cubic-bezier(0.23,1,0.32,1);
+  }
+  .bar-pct {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--muted);
+    text-align: right;
+  }
+
+  /* patch grid viz */
+  .patch-section {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 36px;
+  }
+  .patch-section h3 {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+  #patchCanvas {
+    width: 100%;
+    border-radius: 8px;
+    image-rendering: pixelated;
+  }
+
+  /* legend */
+  .legend {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-top: 14px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 0.78rem;
+    color: var(--muted);
+  }
+  .legend-swatch {
+    width: 12px; height: 12px;
+    border-radius: 3px;
+  }
+
+  /* toast */
+  .toast {
+    position: fixed;
+    bottom: 32px; right: 32px;
+    background: var(--danger);
+    color: #fff;
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    padding: 12px 20px;
+    border-radius: 8px;
+    transform: translateY(80px);
+    transition: transform 0.3s;
+    z-index: 999;
+  }
+  .toast.show { transform: translateY(0); }
+
+  @media (max-width: 720px) {
+    .upload-grid, .compare-grid { grid-template-columns: 1fr; }
+    .config-row { flex-direction: column; align-items: flex-start; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo"><span class="status-dot"></span>LAND<em>WATCH</em></div>
+  <div class="header-meta">SATELLITE CHANGE INTELLIGENCE · EuroSAT ResNet</div>
+</header>
+
+<main>
+  <div class="hero">
+    <h1>Detect <em>land-use</em><br>change from space.</h1>
+    <p>Upload two satellite images of the same region taken at different times. The model classifies every patch and flags where the landscape has changed.</p>
+  </div>
+
+  <!-- UPLOAD -->
+  <div class="upload-grid">
+    <div class="upload-card" id="dropzone1" ondragover="onDrag(event,1)" ondragleave="offDrag(1)" ondrop="onDrop(event,1)">
+      <span class="upload-label">Image 1 — Earlier date</span>
+      <input type="file" accept="image/*" onchange="loadFile(event,1)" id="file1"/>
+      <div class="upload-placeholder" id="ph1">
+        <div class="upload-icon">🛰</div>
+        <p>Drop or click to upload<br><strong>earlier</strong> satellite image</p>
+      </div>
+      <img class="preview-img" id="prev1" style="display:none"/>
+      <div class="preview-overlay" id="ov1" style="display:none">T₁ · BEFORE</div>
+    </div>
+
+    <div class="upload-card" id="dropzone2" ondragover="onDrag(event,2)" ondragleave="offDrag(2)" ondrop="onDrop(event,2)">
+      <span class="upload-label">Image 2 — Later date</span>
+      <input type="file" accept="image/*" onchange="loadFile(event,2)" id="file2"/>
+      <div class="upload-placeholder" id="ph2">
+        <div class="upload-icon">🛰</div>
+        <p>Drop or click to upload<br><strong>later</strong> satellite image</p>
+      </div>
+      <img class="preview-img" id="prev2" style="display:none"/>
+      <div class="preview-overlay" id="ov2" style="display:none">T₂ · AFTER</div>
+    </div>
+  </div>
+
+  <!-- CONFIG -->
+  <div class="config-row">
+    <div class="config-item">
+      <label>Patch size (px)</label>
+      <input type="range" id="patchRange" min="16" max="128" step="16" value="64"
+             oninput="document.getElementById('patchVal').textContent=this.value"/>
+      <span class="range-val" id="patchVal">64</span>
+    </div>
+    <div class="config-item">
+      <label>Overlay opacity</label>
+      <input type="range" id="alphaRange" min="20" max="90" value="55"
+             oninput="document.getElementById('alphaVal').textContent=this.value+'%';reDrawOverlay()"/>
+      <span class="range-val" id="alphaVal">55%</span>
+    </div>
+    <div class="config-item">
+      <label>Change colour</label>
+      <select id="colorPicker" onchange="reDrawOverlay()">
+        <option value="255,71,87">Red alert</option>
+        <option value="255,107,53">Orange burn</option>
+        <option value="0,229,160" selected>Green detect</option>
+        <option value="79,195,247">Blue scan</option>
+      </select>
+    </div>
+  </div>
+
+  <button class="analyse-btn" id="analyseBtn" onclick="runAnalysis()" disabled>
+    <div class="spinner" id="spinner"></div>
+    <span id="btnText">▶ RUN ANALYSIS</span>
+  </button>
+
+  <!-- RESULTS -->
+  <div id="results">
+    <p class="section-label">// analysis output</p>
+
+    <!-- Stats -->
+    <div class="stat-row">
+      <div class="stat-card green">
+        <div class="stat-value" id="statPct">—</div>
+        <div class="stat-label">Patches changed (%)</div>
+      </div>
+      <div class="stat-card orange">
+        <div class="stat-value" id="statChanged">—</div>
+        <div class="stat-label">Changed patches</div>
+      </div>
+      <div class="stat-card blue">
+        <div class="stat-value" id="statTotal">—</div>
+        <div class="stat-label">Total patches analysed</div>
+      </div>
+      <div class="stat-card red">
+        <div class="stat-value" id="statClasses">—</div>
+        <div class="stat-label">Unique transitions</div>
+      </div>
+    </div>
+
+    <!-- Compare images -->
+    <p class="section-label">// image comparison</p>
+    <div class="compare-grid">
+      <div class="compare-card">
+        <div class="compare-card-header"><span class="dot dot-green"></span>T₁ · Before</div>
+        <div class="compare-canvas-wrap">
+          <img id="cmpImg1"/>
+        </div>
+      </div>
+      <div class="compare-card">
+        <div class="compare-card-header"><span class="dot dot-orange"></span>T₂ · After</div>
+        <div class="compare-canvas-wrap">
+          <img id="cmpImg2"/>
+        </div>
+      </div>
+      <div class="compare-card">
+        <div class="compare-card-header"><span class="dot dot-red"></span>Change Map</div>
+        <div class="compare-canvas-wrap">
+          <img id="cmpImg2b"/>
+          <canvas id="overlayCanvas"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Class distribution -->
+    <div class="transition-bar">
+      <h3>// land-use class distribution (T₁ → T₂)</h3>
+      <div class="class-bars" id="classBars"></div>
+    </div>
+
+    <!-- Patch grid -->
+    <div class="patch-section">
+      <h3>// patch classification grid · T₁ (left) vs T₂ (right)</h3>
+      <canvas id="patchCanvas"></canvas>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-swatch" style="background:#00e5a0"></div>Unchanged</div>
+        <div class="legend-item"><div class="legend-swatch" style="background:#ff4757"></div>Changed</div>
+        <div class="legend-item"><div class="legend-swatch" style="background:#4fc3f7"></div>Urban</div>
+        <div class="legend-item"><div class="legend-swatch" style="background:#43a047"></div>Forest</div>
+        <div class="legend-item"><div class="legend-swatch" style="background:#ffd54f"></div>Agriculture</div>
+        <div class="legend-item"><div class="legend-swatch" style="background:#7e57c2"></div>River/Water</div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────
+const state = {
+  img1: null, img2: null,
+  preds1: null, preds2: null,
+  changeGrid: null,
+  rows: 0, cols: 0,
+  classes: [
+    "AnnualCrop","Forest","HerbaceousVegetation","Highway",
+    "Industrial","Pasture","PermanentCrop","Residential",
+    "River","SeaLake"
+  ]
+};
+
+// ── Class colours ──────────────────────────────────────────────────────
+const CLASS_COLORS = [
+  "#ffd54f","#43a047","#66bb6a","#ff7043",
+  "#7e57c2","#a5d6a7","#ef9a9a","#4fc3f7",
+  "#29b6f6","#0288d1"
+];
+
+// ── Upload helpers ─────────────────────────────────────────────────────
+function loadFile(e, n) {
+  const file = e.target.files[0];
+  if (!file) return;
+  readImage(file, n);
+}
+function onDrag(e, n) { e.preventDefault(); document.getElementById('dropzone'+n).classList.add('dragover'); }
+function offDrag(n)    { document.getElementById('dropzone'+n).classList.remove('dragover'); }
+function onDrop(e, n)  { e.preventDefault(); offDrag(n); const file = e.dataTransfer.files[0]; if (file) readImage(file, n); }
+
+function readImage(file, n) {
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = new Image();
+    img.onload = () => {
+      state['img'+n] = img;
+      const prev = document.getElementById('prev'+n);
+      prev.src = ev.target.result;
+      prev.style.display = 'block';
+      document.getElementById('ph'+n).style.display = 'none';
+      document.getElementById('ov'+n).style.display = 'block';
+      document.getElementById('dropzone'+n).classList.add('has-image');
+      document.getElementById('dropzone'+n).style.padding = '0';
+      checkReady();
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function checkReady() {
+  document.getElementById('analyseBtn').disabled = !(state.img1 && state.img2);
+}
+
+// ── Core analysis (client-side simulation) ─────────────────────────────
+function runAnalysis() {
+  const btn = document.getElementById('analyseBtn');
+  const spinner = document.getElementById('spinner');
+  const btnText = document.getElementById('btnText');
+
+  btn.disabled = true;
+  spinner.style.display = 'block';
+  btnText.textContent = 'ANALYSING…';
+
+  setTimeout(() => {
+    try {
+      analyse();
+    } catch(err) {
+      showToast('Analysis error: ' + err.message);
+    }
+    btn.disabled = false;
+    spinner.style.display = 'none';
+    btnText.textContent = '▶ RUN ANALYSIS';
+  }, 600);
+}
+
+function analyse() {
+  const patchSize = parseInt(document.getElementById('patchRange').value);
+  const { img1, img2 } = state;
+
+  // Work at a common canvas size
+  const W = Math.min(img1.width, img2.width, 512);
+  const H = Math.min(img1.height, img2.height, 512);
+
+  const c1 = toCanvas(img1, W, H);
+  const c2 = toCanvas(img2, W, H);
+
+  const rows = Math.floor(H / patchSize);
+  const cols = Math.floor(W / patchSize);
+  state.rows = rows; state.cols = cols;
+
+  // Classify each patch via colour-space heuristics
+  state.preds1 = classifyPatches(c1, rows, cols, patchSize);
+  state.preds2 = classifyPatches(c2, rows, cols, patchSize);
+
+  // Change grid
+  const grid = new Uint8Array(rows * cols);
+  let changed = 0;
+  for (let i = 0; i < rows * cols; i++) {
+    if (state.preds1[i] !== state.preds2[i]) { grid[i] = 1; changed++; }
+  }
+  state.changeGrid = grid;
+
+  // Unique transitions
+  const transitions = new Set();
+  for (let i = 0; i < rows * cols; i++) {
+    if (grid[i]) transitions.add(state.preds1[i] + '_' + state.preds2[i]);
+  }
+
+  const pct = (changed / (rows * cols) * 100).toFixed(1);
+
+  // Update stats
+  document.getElementById('statPct').textContent      = pct + '%';
+  document.getElementById('statChanged').textContent  = changed;
+  document.getElementById('statTotal').textContent    = rows * cols;
+  document.getElementById('statClasses').textContent  = transitions.size;
+
+  // Show images
+  document.getElementById('cmpImg1').src  = c1.toDataURL();
+  document.getElementById('cmpImg2').src  = c2.toDataURL();
+  document.getElementById('cmpImg2b').src = c2.toDataURL();
+
+  // Draw change overlay
+  reDrawOverlay();
+
+  // Class distribution bars
+  drawClassBars();
+
+  // Patch grid
+  drawPatchGrid(patchSize);
+
+  document.getElementById('results').style.display = 'block';
+  document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+}
+
+// ── Canvas helpers ─────────────────────────────────────────────────────
+function toCanvas(img, W, H) {
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  c.getContext('2d').drawImage(img, 0, 0, W, H);
+  return c;
+}
+
+function getPatchData(ctx, c, r, ps) {
+  return ctx.getImageData(c * ps, r * ps, ps, ps).data;
+}
+
+function avgChannel(data, ch) {
+  let sum = 0;
+  for (let i = ch; i < data.length; i += 4) sum += data[i];
+  return sum / (data.length / 4);
+}
+
+// Heuristic classifier — maps colour profile → EuroSAT class index
+function classifyPatch(data) {
+  const r = avgChannel(data, 0);
+  const g = avgChannel(data, 1);
+  const b = avgChannel(data, 2);
+  const brightness = (r + g + b) / 3;
+  const greenness = g - (r + b) / 2;
+  const redness   = r - (g + b) / 2;
+  const blueness  = b - (r + g) / 2;
+  const saturation = Math.max(r,g,b) - Math.min(r,g,b);
+
+  // 0 AnnualCrop  1 Forest  2 HerbVeg  3 Highway  4 Industrial
+  // 5 Pasture     6 PermCrop 7 Residential 8 River 9 SeaLake
+  if (blueness > 15 && brightness < 120)  return 9; // deep water
+  if (blueness > 8  && saturation > 20)   return 8; // river/canal
+  if (greenness > 18 && brightness < 130) return 1; // forest
+  if (greenness > 10 && brightness < 160) return 2; // herbaceous
+  if (greenness > 6  && saturation < 40)  return 5; // pasture
+  if (redness > 5  && saturation > 30)    return 0; // annual crop
+  if (brightness > 170 && saturation < 25) return 7; // residential (bright grey)
+  if (brightness > 140 && redness > 0)    return 4; // industrial
+  if (saturation < 20 && brightness > 100) return 3; // highway
+  return 6; // permanent crop fallback
+}
+
+function classifyPatches(canvas, rows, cols, ps) {
+  const ctx = canvas.getContext('2d');
+  const preds = new Uint8Array(rows * cols);
+  for (let r = 0; r < rows; r++)
+    for (let c = 0; c < cols; c++)
+      preds[r * cols + c] = classifyPatch(getPatchData(ctx, c, r, ps));
+  return preds;
+}
+
+// ── Change overlay ─────────────────────────────────────────────────────
+function reDrawOverlay() {
+  if (!state.changeGrid) return;
+  const canvas = document.getElementById('overlayCanvas');
+  const wrap   = canvas.parentElement;
+  const W = wrap.clientWidth  || 300;
+  const H = wrap.clientHeight || 225;
+  canvas.width  = W;
+  canvas.height = H;
+
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, W, H);
+
+  const alpha  = parseInt(document.getElementById('alphaRange').value) / 100;
+  const [cr, cg, cb] = document.getElementById('colorPicker').value.split(',').map(Number);
+
+  const pw = W / state.cols;
+  const ph = H / state.rows;
+
+  for (let r = 0; r < state.rows; r++) {
+    for (let c = 0; c < state.cols; c++) {
+      if (state.changeGrid[r * state.cols + c]) {
+        ctx.fillStyle = `rgba(${cr},${cg},${cb},${alpha})`;
+        ctx.fillRect(c * pw, r * ph, pw + 0.5, ph + 0.5);
+      }
+    }
+  }
+}
+
+// ── Class bars ─────────────────────────────────────────────────────────
+function drawClassBars() {
+  const n = state.classes.length;
+  const cnt1 = new Int32Array(n);
+  const cnt2 = new Int32Array(n);
+  const total = state.rows * state.cols;
+  for (let i = 0; i < total; i++) { cnt1[state.preds1[i]]++; cnt2[state.preds2[i]]++; }
+
+  const container = document.getElementById('classBars');
+  container.innerHTML = '';
+  const maxVal = Math.max(...cnt1, ...cnt2);
+
+  state.classes.forEach((name, i) => {
+    if (cnt1[i] === 0 && cnt2[i] === 0) return;
+    const pct1 = (cnt1[i] / total * 100).toFixed(1);
+    const pct2 = (cnt2[i] / total * 100).toFixed(1);
+    const color = CLASS_COLORS[i];
+    container.innerHTML += `
+      <div class="class-bar-row">
+        <span class="class-name" style="color:${color}">${name}</span>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="bar-track"><div class="bar-fill" style="width:${pct1}%;background:${color}88"></div></div>
+          <div class="bar-track"><div class="bar-fill" style="width:${pct2}%;background:${color}"></div></div>
+        </div>
+        <span class="bar-pct">${pct1}%→${pct2}%</span>
+      </div>`;
+  });
+
+  // Animate bars after insertion
+  requestAnimationFrame(() => {
+    container.querySelectorAll('.bar-fill').forEach(b => {
+      const w = b.style.width; b.style.width = '0';
+      requestAnimationFrame(() => b.style.width = w);
+    });
+  });
+}
+
+// ── Patch grid ─────────────────────────────────────────────────────────
+function drawPatchGrid(ps) {
+  const canvas = document.getElementById('patchCanvas');
+  const { rows, cols, preds1, preds2, changeGrid } = state;
+  const CELL = Math.max(6, Math.floor(360 / (cols * 2 + 1)));
+  const GAP  = CELL;
+
+  canvas.width  = cols * 2 * CELL + GAP;
+  canvas.height = rows * CELL;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const draw = (preds, offsetX) => {
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const idx = r * cols + c;
+        const isChanged = changeGrid[idx] === 1;
+        const classIdx  = preds[idx];
+        const color = isChanged ? '#ff4757' : CLASS_COLORS[classIdx];
+        ctx.fillStyle = color;
+        ctx.fillRect(offsetX + c * CELL, r * CELL, CELL - 1, CELL - 1);
+      }
+    }
+  };
+
+  draw(preds1, 0);
+  // divider
+  ctx.fillStyle = '#1c2d42';
+  ctx.fillRect(cols * CELL, 0, GAP, rows * CELL);
+  draw(preds2, cols * CELL + GAP);
+}
+
+// ── Toast ──────────────────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+window.addEventListener('resize', reDrawOverlay);
+</script>
+</body>
+</html>
