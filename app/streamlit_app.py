@@ -272,11 +272,13 @@ The model classifies every patch and flags where the landscape has changed.</div
 # ── Model loader (cached) ──────────────────────────────────────────────────────
 @st.cache_resource
 def load_detector():
+    from download_model import download_model
+    download_model()  # no-op if model already exists
     from change_detection.spatial_change import SpatialChangeDetector
-    device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+    device = torch.device("cpu")  # CPU for cloud deploy
     return SpatialChangeDetector(
         model_path="results/best_model.pth",
-        data_dir="data/raw/2750",
+        data_dir=None,  # classes are hardcoded in spatial_change.py
         device=device
     ), device
 
